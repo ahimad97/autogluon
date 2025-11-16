@@ -1608,6 +1608,21 @@ def create_fusion_model(
     -------
     A Pytorch model.
     """
+        # --- CORAL tweak: adjust head output dimension ---
+    # Adapt this path to whatever your config uses ("optimization" vs "optim").
+    coral_enabled = False
+    try:
+        # If your hyperparameters set something like optimization.loss_function="coral"
+        # adjust this getattr chain to match your actual config.
+        loss_name = getattr(config.optim, "loss_function", None)
+        coral_enabled = (loss_name == "coral")
+    except Exception:
+        coral_enabled = False
+
+    if coral_enabled and num_classes is not None and num_classes > 1:
+        effective_num_classes = num_classes - 1
+    else:
+        effective_num_classes = num_classes
     names = config.model.names
     if isinstance(names, str):
         names = [names]
@@ -1624,7 +1639,8 @@ def create_fusion_model(
         model = create_model(
             model_name=model_name,
             model_config=model_config,
-            num_classes=num_classes,
+            # num_classes=num_classes,
+            num_classes=effective_num_classes,
             classes=classes,
             num_numerical_columns=num_numerical_columns,
             num_categories=num_categories,

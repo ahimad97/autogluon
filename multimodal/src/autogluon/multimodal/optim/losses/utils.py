@@ -25,7 +25,7 @@ from .focal_loss import FocalLoss
 from .lemda_loss import LemdaLoss
 from .softmax_losses import MultiNegativesSoftmaxLoss, SoftTargetCrossEntropy
 from .structure_loss import StructureLoss
-
+from .coral_loss import CoralLoss, labels_to_coral_levels
 logger = logging.getLogger(__name__)
 
 
@@ -55,9 +55,19 @@ def get_loss_func(
     -------
     A Pytorch loss module.
     """
+    # Debug: Print what loss function was requested
+    print(f"\n{'='*60}")
+    print(f"get_loss_func called:")
+    print(f"  problem_type: {problem_type}")
+    print(f"  loss_func_name: {loss_func_name}")
+    print(f"  mixup_active: {mixup_active}")
+    print(f"  kwargs: {kwargs}")
+    print(f"{'='*60}\n")
+    
     if problem_type in [BINARY, MULTICLASS]:
         if mixup_active:
             loss_func = SoftTargetCrossEntropy()
+            print("⚠️ Using SoftTargetCrossEntropy (mixup active)")
         else:
             if loss_func_name is not None and loss_func_name.lower() == "focal_loss":
                 loss_func = FocalLoss(
@@ -65,8 +75,17 @@ def get_loss_func(
                     gamma=config.focal_loss.gamma,
                     reduction=config.focal_loss.reduction,
                 )
+            elif loss_func_name is not None and "coral" in loss_func_name.lower():
+                loss_func = CoralLoss(num_classes=kwargs["num_classes"], reduction="mean")
+                print(f"\n{'='*70}")
+                print(f"🔥 CORAL LOSS ACTIVATED!")
+                print(f"   num_classes: {kwargs['num_classes']}")
+                print(f"   output_dim: {kwargs['num_classes']-1} (cumulative ordinal regression)")
+                print(f"{'='*70}\n")
+
             else:
                 loss_func = nn.CrossEntropyLoss(label_smoothing=config.label_smoothing)
+                print(f"⚠️ Using CrossEntropyLoss (default)")
                 logger.debug(f"loss_func.label_smoothing: {loss_func.label_smoothing}")
     elif problem_type == REGRESSION:
         if loss_func_name is not None:

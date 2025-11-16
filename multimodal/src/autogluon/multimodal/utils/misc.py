@@ -12,14 +12,18 @@ from scipy.special import expit, softmax
 logger = logging.getLogger(__name__)
 
 
-def logits_to_prob(logits: np.ndarray):
+def logits_to_prob(logits: np.ndarray, num_classes: int = None):
     """
     Convert logits to probabilities.
+    Handles both standard multiclass logits and CORAL cumulative logits.
 
     Parameters
     ----------
     logits
         The logits output of a classification head.
+    num_classes
+        The number of classes. If provided and logits.shape[1] == num_classes - 1,
+        assumes CORAL format and converts accordingly.
 
     Returns
     -------
@@ -28,7 +32,14 @@ def logits_to_prob(logits: np.ndarray):
     if logits.ndim == 1:
         return expit(logits)
     elif logits.ndim == 2:
-        return softmax(logits, axis=1)
+        # Check if this is CORAL format (num_classes - 1 logits)
+        if num_classes is not None and logits.shape[1] == num_classes - 1:
+            # Import here to avoid circular dependency
+            from ..optim.losses.coral_loss import coral_logits_to_probs
+            return coral_logits_to_probs(logits, num_classes=num_classes, as_numpy=True)
+        else:
+            # Standard multiclass logits
+            return softmax(logits, axis=1)
     else:
         raise ValueError(f"Unsupported logit dim: {logits.ndim}.")
 

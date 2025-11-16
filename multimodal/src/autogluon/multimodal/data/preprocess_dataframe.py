@@ -882,7 +882,15 @@ class MultiModalFeaturePreprocessor(TransformerMixin, BaseEstimator):
         if self.label_type == CATEGORICAL:
             assert len(y_pred.shape) <= 2
             if len(y_pred.shape) == 2 and y_pred.shape[1] >= 2:
-                y_pred = y_pred.argmax(axis=1)
+                # Check if this might be CORAL logits (num_classes - 1 outputs)
+                num_classes = len(self._label_generator.classes_)
+                if y_pred.shape[1] == num_classes - 1:
+                    # CORAL prediction: convert cumulative logits to class predictions
+                    from ..optim.losses.coral_loss import coral_logits_to_predictions
+                    y_pred = coral_logits_to_predictions(y_pred, as_numpy=True)
+                else:
+                    # Standard multiclass: use argmax
+                    y_pred = y_pred.argmax(axis=1)
             else:
                 y_pred = (y_pred > 0.5).astype(int)
             # Transform the predicted label back to the original space (e.g., string values)

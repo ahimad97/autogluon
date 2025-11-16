@@ -843,6 +843,13 @@ class BaseLearner(ExportMixin, DistillationMixin, RealtimeMixin):
         return mixup_active, mixup_func
 
     def get_loss_func_per_run(self, config, mixup_active=None):
+        print(f"\n{'='*70}")
+        print(f"get_loss_func_per_run called in base.py:")
+        print(f"  config.optim.loss_func: {config.optim.loss_func}")
+        print(f"  problem_type: {self._problem_type}")
+        print(f"  mixup_active: {mixup_active}")
+        print(f"{'='*70}\n")
+        
         loss_func = get_loss_func(
             problem_type=self._problem_type,
             mixup_active=mixup_active,
@@ -1862,7 +1869,9 @@ class BaseLearner(ExportMixin, DistillationMixin, RealtimeMixin):
         logits = extract_from_output(ret_type=ret_type, outputs=outputs)
         metric_data = {}
         if self._problem_type in [BINARY, MULTICLASS]:
-            y_pred_prob = logits_to_prob(logits)
+            # Pass num_classes to handle CORAL logits (num_classes - 1 outputs)
+            num_classes = self._output_shape if hasattr(self, '_output_shape') else None
+            y_pred_prob = logits_to_prob(logits, num_classes=num_classes)
             metric_data[Y_PRED_PROB] = y_pred_prob
 
         y_pred = self._df_preprocessor.transform_prediction(
@@ -2043,7 +2052,9 @@ class BaseLearner(ExportMixin, DistillationMixin, RealtimeMixin):
                 requires_label=False,
             )
             logits = extract_from_output(outputs=outputs, ret_type=LOGITS)
-            prob = logits_to_prob(logits)
+            # Pass num_classes to handle CORAL logits (num_classes - 1 outputs)
+            num_classes = self._output_shape if hasattr(self, '_output_shape') else None
+            prob = logits_to_prob(logits, num_classes=num_classes)
 
         if not as_multiclass:
             if self._problem_type == BINARY:
