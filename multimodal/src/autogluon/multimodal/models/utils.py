@@ -720,7 +720,32 @@ def apply_multi_class_semantic_seg_postprocess(output: Dict):
     return output
 
 
+def apply_coral_postprocess(output: Dict, num_classes: int):
+    """
+    Apply the CORAL postprocessing to logits.
+    Converts (N, num_classes-1) cumulative logits to (N, num_classes) probabilities.
+
+    Parameters
+    ----------
+    output
+        The model output dict.
+    num_classes
+        The number of classes.
+
+    Returns
+    -------
+    The output with logits transformed to class probabilities.
+    """
+    from ..optim.losses.coral_loss import coral_logits_to_probs
+
+    for k, v in output.items():
+        if LOGITS in v:
+            output[k][LOGITS] = coral_logits_to_probs(v[LOGITS], num_classes, as_numpy=False)
+    return output
+
+
 def get_model_postprocess_fn(problem_type: str, loss_func: _Loss):
+
     """
     Get the postprocessing function for the model outputs.
 
@@ -744,6 +769,12 @@ def get_model_postprocess_fn(problem_type: str, loss_func: _Loss):
             postprocess_func = apply_multi_class_semantic_seg_postprocess
         else:
             postprocess_func = apply_sigmoid
+    else:
+        # Lazy import to avoid circular dependency
+        from ..optim.losses.coral_loss import CoralLoss
+
+        if isinstance(loss_func, CoralLoss):
+            postprocess_func = functools.partial(apply_coral_postprocess, num_classes=loss_func.num_classes)
 
     return postprocess_func
 
@@ -1615,6 +1646,8 @@ def create_fusion_model(
         # If your hyperparameters set something like optimization.loss_function="coral"
         # adjust this getattr chain to match your actual config.
         loss_name = getattr(config.optim, "loss_function", None)
+        if loss_name is None:
+            loss_name = getattr(config.optim, "loss_func", None)
         coral_enabled = (loss_name == "coral")
     except Exception:
         coral_enabled = False

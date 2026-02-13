@@ -164,11 +164,12 @@ class CoralLoss(nn.Module):
         else:
             self.importance_weights = None
 
-    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
-        logits: (N, num_classes-1)
+        input:  (N, num_classes-1) – raw logits
         target: (N,) int labels 0..num_classes-1  OR levels (N, num_classes-1)
         """
+        logits = input
         if target.dim() == 1 or target.size(-1) == 1:
             # Standard AutoGluon labels: 1D, integer
             levels = labels_to_coral_levels(

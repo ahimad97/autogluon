@@ -1,0 +1,2 @@
+accuracy,within_one_accuracy,mae,quadratic_kappa,experiment,loss,image_backbone,text_encoder,fusion,time_sec,pred_time_sec
+0.305,0.72,1.0449999570846558,-0.047105877124764106,coral_resnet18,coral,resnet18,prajjwal1/bert-tiny,mlp,347.7,122.0

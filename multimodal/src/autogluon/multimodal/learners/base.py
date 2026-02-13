@@ -842,19 +842,34 @@ class BaseLearner(ExportMixin, DistillationMixin, RealtimeMixin):
             )
         return mixup_active, mixup_func
 
-    def get_loss_func_per_run(self, config, mixup_active=None):
+    def get_loss_func_per_run(self, config, mixup_active=None, model=None):
         print(f"\n{'='*70}")
         print(f"get_loss_func_per_run called in base.py:")
         print(f"  config.optim.loss_func: {config.optim.loss_func}")
         print(f"  problem_type: {self._problem_type}")
         print(f"  mixup_active: {mixup_active}")
+        print(f"  model type: {type(model)}")
+        if model:
+            print(f"  model has num_classes? {hasattr(model, 'num_classes')}")
+            if hasattr(model, 'num_classes'):
+                print(f"  model.num_classes: {model.num_classes}")
         print(f"{'='*70}\n")
+        
+        loss_kwargs = {}
+        if self._output_shape is not None:
+             loss_kwargs["num_classes"] = self._output_shape
+        elif model is not None and hasattr(model, "num_classes"):
+            loss_kwargs["num_classes"] = model.num_classes
+        else:
+             print("WARNING: model is None or has no num_classes, but get_loss_func might require it (e.g. for CORAL).")
+
         
         loss_func = get_loss_func(
             problem_type=self._problem_type,
             mixup_active=mixup_active,
             loss_func_name=config.optim.loss_func,
             config=config.optim,
+            **loss_kwargs,
         )
         aug_loss_func = get_aug_loss_func(
             config=config.optim,
@@ -1296,7 +1311,7 @@ class BaseLearner(ExportMixin, DistillationMixin, RealtimeMixin):
         )
         validation_metric, custom_metric_func = self.get_validation_metric_per_run()
         mixup_active, mixup_func = self.get_mixup_func_per_run(config=config)
-        loss_func, aug_loss_func = self.get_loss_func_per_run(config=config, mixup_active=mixup_active)
+        loss_func, aug_loss_func = self.get_loss_func_per_run(config=config, mixup_active=mixup_active, model=model)
         model_postprocess_fn = self.get_model_postprocess_fn_per_run(loss_func=loss_func)
         num_gpus, strategy = self.get_num_gpus_and_strategy_per_run(config=config)
         precision = self.get_precision_per_run(num_gpus=num_gpus, precision=config.env.precision)

@@ -76,6 +76,9 @@ def get_loss_func(
                     reduction=config.focal_loss.reduction,
                 )
             elif loss_func_name is not None and "coral" in loss_func_name.lower():
+                print(f"DEBUG: Initializing CoralLoss with kwargs keys: {list(kwargs.keys())}")
+                if "num_classes" not in kwargs:
+                    raise KeyError(f"num_classes is missing from kwargs in get_loss_func. Available keys: {list(kwargs.keys())}")
                 loss_func = CoralLoss(num_classes=kwargs["num_classes"], reduction="mean")
                 print(f"\n{'='*70}")
                 print(f"🔥 CORAL LOSS ACTIVATED!")
